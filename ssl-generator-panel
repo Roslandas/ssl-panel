@@ -18,6 +18,7 @@ clear
 if [ -z "$domain" ]; then
   echo ""
   echo "❌ Domenas neįvestas. Nutraukiama."
+  rm -rf ssl-generator-panel
   exit 1
 fi
 
@@ -71,6 +72,7 @@ if [ -n "$PORT80_PID" ]; then
   systemctl start $SERVICE
 fi
 
+rm -rf ssl-generator-panel
 clear
 echo ""
 echo "✅ Sertifikatas sėkmingai sugeneruotas domenui: $domain"
