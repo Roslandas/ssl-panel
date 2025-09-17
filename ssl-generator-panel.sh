@@ -1,0 +1,77 @@
+#!/bin/bash
+
+clear
+# Patikrinam ar vartotojas root
+if [ "$EUID" -ne 0 ]; then
+  echo ""
+  echo "❌ Paleisk šį skriptą kaip root!"
+  exit 1
+fi
+
+clear
+# Paprašome vartotojo įvesti domeną
+echo ""
+read -rp "🌐 Įveskite savo domeną (pvz. example.com): " domain
+
+clear
+# Patikrinam ar domenas įvestas
+if [ -z "$domain" ]; then
+  echo ""
+  echo "❌ Domenas neįvestas. Nutraukiama."
+  exit 1
+fi
+
+clear
+echo ""
+echo "🔧 Įdiegiame socat..."
+apt update && apt install socat curl -y
+
+clear
+echo ""
+echo "📥 Įdiegiame acme.sh..."
+curl https://get.acme.sh | sh
+
+clear
+echo ""
+echo "⚙️ Nustatome Let's Encrypt kaip numatytą CA..."
+~/.acme.sh/acme.sh --set-default-ca --server letsencrypt
+
+clear
+echo ""
+echo "✉️ Registruojame paskyrą..."
+~/.acme.sh/acme.sh --register-account -m rolka@gmail.com
+
+clear
+# Sustabdome servisą, jei kas nors naudoja portą 80
+PORT80_PID=$(lsof -ti:80)
+if [ -n "$PORT80_PID" ]; then
+  SERVICE=$(ps -p $PORT80_PID -o comm=)
+  echo ""
+  echo "🔧 Sustabdome $SERVICE, kad atlaisvintume portą 80..."
+  systemctl stop $SERVICE
+fi
+
+clear
+echo ""
+echo "🔐 Išduodame sertifikatą domenui: $domain"
+~/.acme.sh/acme.sh --issue -d "$domain" --standalone
+
+clear
+echo ""
+echo "📦 Įrašome sertifikatą į /root/"
+~/.acme.sh/acme.sh --install-cert -d "$domain" \
+  --key-file /root/private.key \
+  --fullchain-file /root/cert.crt
+
+clear
+# Jei sustabdėme servisą, vėl jį paleidžiame
+if [ -n "$PORT80_PID" ]; then
+  echo ""
+  echo "🔧 Paleidžiame $SERVICE..."
+  systemctl start $SERVICE
+fi
+
+clear
+echo ""
+echo "✅ Sertifikatas sėkmingai sugeneruotas domenui: $domain"
+
